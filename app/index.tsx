@@ -1,37 +1,64 @@
-import React from "react";
-import {Button, StyleSheet, Text, View} from 'react-native';
-import {useAudioPlayer, useAudioPlayerStatus} from 'expo-audio';
-import Pearls from "@/assets/Pearls.mp3"
+import React, {useEffect, useState} from "react";
+import { FlatList, Text, TouchableOpacity, Button, View } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import styles from "@/constants/styles";
+import library from "@/assets/library.json";
 
-const audioSource = Pearls;
+const DATA = library.map((item, index) => ({ ...item, id: index.toString() }));
 
 export default function App() {
-    const player = useAudioPlayer(audioSource);
+    const [currentUrl, setCurrentUrl] = useState<string | null>(null);
+    const player = useAudioPlayer(currentUrl ?? undefined);
     const status = useAudioPlayerStatus(player);
 
+    const handleSelect = (url: string) => {
+        setCurrentUrl(url);
+    };
+
+    useEffect(() => {
+        if (currentUrl) {
+            player.play();
+        }
+    }, [currentUrl, player]);
+
     return (
-        <View style={styles.container}>
-            <Button title="Play Sound" onPress={() => player.play()}/>
-            <Button
-                title="Replay Sound"
-                onPress={() => {
-                    player.seekTo(0);
-                    player.play();
-                    console.log("button press");
-                }}
+        <SafeAreaProvider>
+            <FlatList
+                data={DATA}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{ padding: 10 }}
+                renderItem={({ item }) => (
+                    <TouchableOpacity
+                        style={[
+                            styles.item,
+                            currentUrl === item.uri && { backgroundColor: "#ccc" },
+                        ]}
+                        onPress={() => handleSelect(item.uri)}
+                    >
+                        <Text style={styles.title}>{item.title}</Text>
+                    </TouchableOpacity>
+                )}
             />
-            <Text>
-                {!status?.isLoaded ? "Loading…" : status.isBuffering ? "Buffering…" : status.playing ? "Playing" : "Paused"}
-            </Text>
-        </View>
+
+            <View style={{ padding: 20 }}>
+                <Button title="Play" onPress={() => player.play()} />
+                <Button title="Pause" onPress={() => player.pause()} />
+                <Button
+                    title="Replay"
+                    onPress={() => {
+                        player.seekTo(0);
+                        player.play();
+                    }}
+                />
+                <Text style={{ textAlign: "center", marginTop: 10 }}>
+                    {status.isBuffering
+                        ? "Buffering…"
+                        : status.playing
+                            ? "Playing"
+                            : "Paused"}
+                </Text>
+            </View>
+        </SafeAreaProvider>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'center',
-        backgroundColor: '#ecf0f1',
-        padding: 10,
-    },
-});
